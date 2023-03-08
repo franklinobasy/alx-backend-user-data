@@ -32,8 +32,10 @@ class Auth:
             ) -> str:
         '''Auth header
         '''
-        request = Flask(__name__)
-        return None
+        if request is None:
+            return None
+
+        return request.headers.get('Authorization')
 
     def current_user(
             self,
