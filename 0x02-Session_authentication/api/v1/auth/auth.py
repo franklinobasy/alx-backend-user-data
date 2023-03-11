@@ -1,92 +1,46 @@
 #!/usr/bin/env python3
-"""Auth class"""
-from flask import request
-from flask import Flask
+"""Authentication module for the API.
+"""
+import os
+import re
 from typing import List, TypeVar
-from os import getenv
+from flask import request
 
 
 class Auth:
-    """class for handling auth"""
-
+    """Authentication class.
+    """
     def require_auth(self, path: str, excluded_paths: List[str]) -> bool:
-        """handles auth
-
-        Args:
-            path (str):
-            excluded_paths (List[str]): _description_
-
-        Returns:
-            bool:
+        """Checks if a path requires authentication.
         """
-        if path is None or excluded_paths is None or not excluded_paths:
-            return True
-
-        # handle * at end of excluded paths
-        if path[-1] == '/':
-            path = path[:-1]
-
-        contains_slash = False
-        for excluded_path in excluded_paths:
-            if excluded_path[-1] == '/':
-                excluded_path = excluded_path[:-1]
-                contains_slash = True
-
-            if excluded_path.endswith('*'):
-                idx_after_last_slash = excluded_path.rfind('/') + 1
-                excluded = excluded_path[idx_after_last_slash:-1]
-
-                idx_after_last_slash = path.rfind('/') + 1
-                tmp_path = path[idx_after_last_slash:]
-
-                if excluded in tmp_path:
+        if path is not None and excluded_paths is not None:
+            for exclusion_path in map(lambda x: x.strip(), excluded_paths):
+                pattern = ''
+                if exclusion_path[-1] == '*':
+                    pattern = '{}.*'.format(exclusion_path[0:-1])
+                elif exclusion_path[-1] == '/':
+                    pattern = '{}/*'.format(exclusion_path[0:-1])
+                else:
+                    pattern = '{}/*'.format(exclusion_path)
+                if re.match(pattern, path):
                     return False
-
-            if contains_slash:
-                contains_slash = False
-
-        path += '/'
-
-        if path in excluded_paths:
-            return False
-
         return True
 
     def authorization_header(self, request=None) -> str:
-        """handle authorization header
-
-        Args:
-            request (_type_, optional): _description_. Defaults to None.
-
-        Returns:
-            str: _description_
+        """Gets the authorization header field from the request.
         """
-        if request is None:
-            return None
-
-        return request.headers.get('Authorization')
-
-    def current_user(self, request=None) -> TypeVar('User'):
-        """handle current user
-
-        Returns:
-            TypeVar: User
-        """
-        request = Flask(__name__)
+        if request is not None:
+            return request.headers.get('Authorization', None)
         return None
 
-    def session_cookie(self, request=None):
-        """returns a cookie value from a request
-
-        Args:
-            request (request_object, optional): request. Defaults to None.
+    def current_user(self, request=None) -> TypeVar('User'):
+        """Gets the current user from the request.
         """
-        if request is None:
-            return None
+        return None
 
-        session_name = getenv('SESSION_NAME')
-
-        if session_name is None:
-            return None
-
-        return request.cookies.get(session_name)
+    def session_cookie(self, request=None) -> str:
+        """Gets the value of the cookie named SESSION_NAME.
+        """
+        if request is not None:
+            cookie_name = os.getenv('SESSION_NAME')
+            return request.cookies.get(cookie_name)
